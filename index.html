@@ -289,7 +289,8 @@ async function startRun() {
   layerGain.forEach(g => { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setValueAtTime(0, ac.currentTime); });
   melodyBus._dly.delayTime.value = S.spb * 0.75;
   hide('menu'); hide('results'); hide('pause'); document.body.classList.add('playing');
-  clearInterval(G.timer);
+  clearInterval(G.timer); runsPlayed++;
+  if (window.Portal) { Portal.setAudio(ac); Portal.start(); }
   G.timer = setInterval(schedulerTick, 25);
   schedulerTick();
   if (params.get('record') && !recorder) startRecording(params.get('record'));
@@ -480,7 +481,10 @@ function renderMenu() {
 }
 $('seed').addEventListener('input', e => { seedText = e.target.value.trim(); renderMenu(); });
 $('go').onclick = startRun;
-$('again').onclick = startRun;
+// between songs a portal (if any) may show an ad; Portal.midgame always continues
+let runsPlayed = 0;
+function playAgain() { if (window.Portal && runsPlayed > 0 && !params.has('demo')) Portal.midgame(startRun); else startRun(); }
+$('again').onclick = playAgain;
 $('back').onclick = () => { G = null; hide('results'); show('menu'); renderMenu(); };
 // share: a link that opens the exact same song (built-in or seed-grown) on the same difficulty
 $('share').onclick = async () => {
@@ -507,6 +511,7 @@ renderMenu();
 function endRun(quit) {
   if (!G) return;
   G.ended = true; clearInterval(G.timer);
+  if (window.Portal) Portal.stop();
   layerGain.forEach(g => g.gain.setTargetAtTime(0, ac.currentTime, 0.6));
   if (quit) { G = null; return; }
   if (G.tut && !G.auto) store.set('tutDone', true);
@@ -524,6 +529,7 @@ function endRun(quit) {
     const k = bestKey(G.def, G.diff), prev = store.get(k, null);
     if (!prev || G.score > prev.score) store.set(k, { score: G.score, grade });
   }
+  if (window.Portal && !G.auto && (grade === 'S' || grade === 'A')) Portal.happy();
   setTimeout(() => show('results'), 900);
   if (recorder && recorder.state === 'recording') setTimeout(() => recorder.stop(), 3500);
 }
