@@ -108,7 +108,7 @@
     <p class="tag" id="rtitle" style="margin:0 0 6px"></p>
     <div class="grade" id="rgrade"></div>
     <div class="stats" id="rstats"></div>
-    <div class="row"><button class="go" id="again">Grow it again</button><button class="chip" id="share">Share this song</button><button class="chip" id="back">Menu</button></div>
+    <div class="row"><button class="go" id="next">Next song ▸</button><button class="chip" id="again">Grow it again</button><button class="chip" id="share">Share this song</button><button class="chip" id="back">Menu</button></div>
   </div>
 </div>
 
@@ -447,6 +447,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') { togglePause(); return; }
   if (e.code === 'Enter' && G == null) { startRun(); return; }
+  if (e.code === 'Enter' && G && G.ended && !$('results').classList.contains('hidden')) { e.preventDefault(); nextSong(); return; }
   if (e.repeat) return;
   const l = KEYMAP[e.code];
   if (l != null) { e.preventDefault(); press(l); }
@@ -508,6 +509,14 @@ if (!store.get('tutDone', false) && !params.has('song') && !params.has('seed') &
 let runsPlayed = 0;
 function playAgain() { if (window.Portal && runsPlayed > 0 && !params.has('demo')) Portal.midgame(startRun); else startRun(); }
 $('again').onclick = playAgain;
+// results -> the next song is one tap: the 3 built-in songs in turn, then new songs grown from words
+const NEXT_WORDS = ['ember', 'harbour', 'moth', 'rain on tin', 'quiet hill', 'lighthouse', 'saffron', 'night bus', 'fern', 'tidepool', 'paper kite', 'snowmelt'];
+function nextSong() {
+  if (!seedText && songIdx < SG.SONGS.length - 1) { songIdx++; store.set('song', songIdx); }
+  else { const n = store.get('nextWord', 0) || 0; seedText = NEXT_WORDS[n % NEXT_WORDS.length]; store.set('nextWord', n + 1); }
+  $('seed').value = seedText; renderMenu(); playAgain();
+}
+$('next').onclick = nextSong;
 $('back').onclick = () => { G = null; hide('results'); show('menu'); renderMenu(); };
 // share: a link that opens the exact same song (built-in or seed-grown) on the same difficulty
 $('share').onclick = async () => {
