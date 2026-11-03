@@ -72,6 +72,7 @@
     <button class="go" id="go">Plant ▸</button>
     <div class="settings">
       <span>audio offset <input type="range" id="offset" min="-150" max="150" step="5" value="0"> <span id="offv">0 ms</span></span>
+      <button class="chip" id="calib" style="padding:4px 12px;font-size:11px">tap to calibrate</button>
       <label><input type="checkbox" id="auto"> watch (autoplay)</label>
     </div>
     <p class="help">
@@ -97,6 +98,15 @@
     <div class="grade" id="rgrade"></div>
     <div class="stats" id="rstats"></div>
     <div class="row"><button class="go" id="again">Grow it again</button><button class="chip" id="share">Share this song</button><button class="chip" id="back">Menu</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="calibo">
+  <div class="panel">
+    <h1 style="font-size:56px">calibrate</h1>
+    <p class="tag">Tap any key (or the screen) on every click you hear.</p>
+    <div class="grade" id="calbeat" style="font-size:90px;transition:opacity .08s">·</div>
+    <p class="help" id="calmsg">listen for 4 clicks, then join in…</p>
   </div>
 </div>
 
@@ -381,8 +391,39 @@ function burst(lane, n) {
 }
 
 // ---------- input ----------
+// tap-to-calibrate: 16 clicks at 100 bpm; the median of (tap - click) becomes the audio offset
+let calib = null;
+async function startCalib() {
+  initAudio(); await ac.resume();
+  const t0 = ac.currentTime + 0.8, iv = 0.6, N = 16;
+  calib = { t0, iv, N, taps: [] };
+  for (let i = 0; i < N; i++) {
+    tone(heartGain, 'sine', i % 4 ? 880 : 1320, t0 + i * iv, 0.001, 0.4, 0.06);
+    setTimeout(() => { if (!calib) return; const b = $('calbeat'); b.textContent = i % 4 ? '•' : '✿'; b.style.opacity = 1; setTimeout(() => b.style.opacity = 0.25, 120); }, (t0 + i * iv - ac.currentTime) * 1000);
+  }
+  $('calmsg').textContent = 'listen for 4 clicks, then join in…';
+  hide('menu'); show('calibo');
+  setTimeout(finishCalib, (t0 + N * iv + 0.4 - ac.currentTime) * 1000);
+}
+function calibTap() {
+  if (!calib) return;
+  const t = ac.currentTime - (ac.outputLatency || 0) - calib.t0, i = Math.round(t / calib.iv);
+  if (i >= 3 && i < calib.N) { const d = t - i * calib.iv; if (Math.abs(d) < 0.25) calib.taps.push(d); }
+  $('calmsg').textContent = calib.taps.length + ' taps';
+}
+function finishCalib() {
+  if (!calib) return;
+  const taps = calib.taps.sort((a, b) => a - b); calib = null;
+  hide('calibo'); show('menu');
+  if (taps.length < 5) { toast('not enough taps, offset unchanged'); return; }
+  const med = taps[Math.floor(taps.length / 2)];
+  offsetMs = Math.max(-150, Math.min(150, Math.round(med * 1000 / 5) * 5));
+  $('offset').value = offsetMs; $('offv').textContent = offsetMs + ' ms'; store.set('offset', offsetMs);
+  toast('audio offset set to ' + offsetMs + ' ms');
+}
 const KEYMAP = { ArrowUp: 0, KeyW: 0, KeyI: 0, ArrowRight: 1, KeyD: 1, KeyL: 1, ArrowDown: 2, KeyS: 2, KeyK: 2, ArrowLeft: 3, KeyA: 3, KeyJ: 3 };
 addEventListener('keydown', e => {
+  if (calib) { if (!e.repeat) { e.preventDefault(); calibTap(); } return; }
   if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'range') {
     if (e.key === 'Enter') { e.preventDefault(); startRun(); }
     return;
@@ -393,6 +434,8 @@ addEventListener('keydown', e => {
   const l = KEYMAP[e.code];
   if (l != null) { e.preventDefault(); press(l); }
 });
+$('calibo').addEventListener('pointerdown', e => { e.preventDefault(); calibTap(); });
+$('calib').onclick = e => { e.target.blur(); startCalib(); };
 cv.addEventListener('pointerdown', e => {
   e.preventDefault();
   const rc = cv.getBoundingClientRect();
