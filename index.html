@@ -78,7 +78,7 @@
       Seeds fly out from the centre. Hit them as they cross the ring:
       <kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd><kbd>←</kbd> or <kbd>W</kbd><kbd>D</kbd><kbd>S</kbd><kbd>A</kbd>, or tap the quadrant.<br>
       Every hit <i>is</i> a melody note and plants a flower. Flowers bloom new layers into the song —
-      roots, canopy, rustle, fireflies, aurora. Misses wilt them. <kbd>Esc</kbd> pauses.
+      roots, canopy, rustle, fireflies, aurora. Misses wilt them. <kbd>Esc</kbd> pauses. Your first garden comes with hints.
     </p>
   </div>
 </div>
@@ -268,6 +268,9 @@ async function startRun() {
     start: ac.currentTime + lead, nextStep: 0, nextNote: 0,
     score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, bloom: 0, active: [false, false, false, false, false],
     laneFlash: [0, 0, 0, 0], approach: APPROACH[diff], done: false, ended: false,
+    // first-run coaching: key glyphs on each lane, "now" cues, softer wilting for the first 16 bars
+    tut: params.has('tut') || (!($('auto').checked || params.has('demo')) && !store.get('tutDone', false)),
+    tutEnd: S.spb * 4 * 16,
     endT: (S.totalSteps) * S.stepDur + 0.4,
     gainPerHit: 100 / (S.notes.length * 0.55), // the full arrangement arrives about halfway through a clean run
   };
@@ -333,7 +336,7 @@ function judge(n, delta) {
 }
 function missNote(n) {
   n.state = 3; G.miss++; G.combo = 0;
-  G.bloom = Math.max(0, G.bloom - 2.5 * G.gainPerHit);
+  G.bloom = Math.max(0, G.bloom - (G.tut && n.t < G.tutEnd ? 1 : 2.5) * G.gainPerHit);
   wilt(n.lane);
   judgements.push({ lane: n.lane, text: 'wilt', col: '#7d7590', t: performance.now() });
 }
@@ -459,6 +462,7 @@ function endRun(quit) {
   G.ended = true; clearInterval(G.timer);
   layerGain.forEach(g => g.gain.setTargetAtTime(0, ac.currentTime, 0.6));
   if (quit) { G = null; return; }
+  if (G.tut && !G.auto) store.set('tutDone', true);
   const total = G.notes.length;
   const acc = (G.perfect + G.good * 0.6) / total;
   const grade = acc >= 0.95 ? 'S' : acc >= 0.88 ? 'A' : acc >= 0.76 ? 'B' : acc >= 0.6 ? 'C' : 'seed';
@@ -631,6 +635,34 @@ function draw() {
     cx.fillText(j.text, CX + Math.cos(a) * (R * 0.62), CY + Math.sin(a) * (R * 0.62) + 7 - age * 10);
   }
   cx.globalAlpha = 1;
+
+  // lane key glyphs: always faint; during the first-run tutorial they're bright and cue each incoming seed
+  const touch = matchMedia('(pointer: coarse)').matches;
+  const tutOn = G && G.tut && now < G.tutEnd;
+  const tutFade = tutOn ? Math.min(1, (G.tutEnd - now) / 3) : 0;
+  const GLYPH = touch ? ['tap', 'tap', 'tap', 'tap'] : ['↑ W', '→ D', '↓ S', '← A'];
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  for (let l = 0; l < 4; l++) {
+    const a = LANE_ANG[l];
+    let cue = 0;
+    if (tutOn) for (const n of G.notes) { const dt = n.t - now; if (dt > 0.6) break; if (n.lane === l && !n.state && dt > -0.1) cue = Math.max(cue, 1 - Math.abs(dt) / 0.6); }
+    const gx = CX + Math.cos(a) * (R + 30), gy = CY + Math.sin(a) * (R + 30);
+    cx.globalAlpha = G ? 0.22 + tutFade * (0.5 + 0.28 * cue) : 0.22;
+    cx.fillStyle = LANE_COL[l];
+    cx.font = `700 ${Math.round(13 + cue * 7 * tutFade)}px 'Space Mono', monospace`;
+    cx.fillText(GLYPH[l], gx, gy);
+  }
+  if (tutOn) {
+    const first = G.notes.length ? G.notes[0].t : 0;
+    const msg = now < first - 0.3 ? 'seeds fly outward — hit each one as it crosses the ring'
+      : now < first + G.S.spb * 16 ? (touch ? 'tap the side the seed is heading to' : 'press the key for its side, right as it touches the ring')
+      : 'every hit plays the melody and plants a flower — keep the garden blooming';
+    cx.globalAlpha = 0.9 * tutFade; cx.fillStyle = '#f3ecdf'; cx.shadowColor = '#07060f'; cx.shadowBlur = 10; cx.font = `italic 300 ${Math.round(Math.min(19, W / 23))}px Fraunces, serif`;
+    const y = Math.min(H - 40, CY + R + 64);
+    if (cx.measureText(msg).width <= W - 32) cx.fillText(msg, CX, y);
+    else { const w = msg.split(' '), h = Math.ceil(w.length / 2); cx.fillText(w.slice(0, h).join(' '), CX, y - 12); cx.fillText(w.slice(h).join(' '), CX, y + 12); }
+  }
+  cx.textBaseline = 'alphabetic'; cx.globalAlpha = 1; cx.shadowBlur = 0;
 
   // HUD
   if (G) {
