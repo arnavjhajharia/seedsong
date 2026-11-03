@@ -96,7 +96,7 @@
     <p class="tag" id="rtitle" style="margin:0 0 6px"></p>
     <div class="grade" id="rgrade"></div>
     <div class="stats" id="rstats"></div>
-    <div class="row"><button class="go" id="again">Grow it again</button><button class="chip" id="back">Menu</button></div>
+    <div class="row"><button class="go" id="again">Grow it again</button><button class="chip" id="share">Share this song</button><button class="chip" id="back">Menu</button></div>
   </div>
 </div>
 
@@ -432,6 +432,22 @@ $('seed').addEventListener('input', e => { seedText = e.target.value.trim(); ren
 $('go').onclick = startRun;
 $('again').onclick = startRun;
 $('back').onclick = () => { G = null; hide('results'); show('menu'); renderMenu(); };
+// share: a link that opens the exact same song (built-in or seed-grown) on the same difficulty
+$('share').onclick = async () => {
+  const u = new URL(location.origin + location.pathname);
+  if (G && G.def.seed.startsWith('user:')) u.searchParams.set('seed', G.def.seed.slice(5)); else u.searchParams.set('song', SG.SONGS.indexOf(G ? G.def : currentDef()));
+  u.searchParams.set('diff', G ? G.diff : diff);
+  const text = `I grew “${G ? G.def.title.replace(/[“”]/g, '') : ''}” in Seedsong (${$('rgrade').textContent}, ${G ? G.score.toLocaleString() : ''}). Can you make it bloom?`;
+  try { if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ title: 'Seedsong', text, url: u.href }); return; } } catch (e) { return; }
+  try { await navigator.clipboard.writeText(text + ' ' + u.href); toast('link copied ✿'); } catch { toast(u.href); }
+};
+// deep links (non-demo): ?seed=word or ?song=N, &diff=N preselect the menu
+if (!params.has('demo')) {
+  if (params.get('seed')) { seedText = params.get('seed').slice(0, 40); $('seed').value = seedText; }
+  else if (params.get('song') != null && SG.SONGS[+params.get('song')]) songIdx = +params.get('song');
+  if (params.get('diff') != null && DIFFS[+params.get('diff')]) diff = +params.get('diff');
+  renderMenu();
+}
 $('resume').onclick = togglePause;
 $('quit').onclick = () => { endRun(true); hide('pause'); ac.resume(); show('menu'); renderMenu(); };
 $('offset').value = offsetMs; $('offv').textContent = offsetMs + ' ms';
