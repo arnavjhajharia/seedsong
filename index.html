@@ -44,6 +44,7 @@
   .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
   .chip { border: 1px solid rgba(243,236,223,.2); background: transparent; color: var(--dim); border-radius: 999px; padding: 7px 16px; font: inherit; font-size: 12px; cursor: pointer; }
   .chip.sel { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+  @media (pointer: coarse) { .chip { min-height: 44px; } } /* phones: 44 px tap targets */
   .go { font-family: 'Fraunces', serif; font-size: 22px; padding: 12px 44px; border-radius: 999px; border: none; cursor: pointer; color: var(--bg);
     background: linear-gradient(100deg, var(--l0), var(--l1)); box-shadow: 0 0 40px rgba(255,122,182,.35); }
   .go:active { transform: scale(.97); }
