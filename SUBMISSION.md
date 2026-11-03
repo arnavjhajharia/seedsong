@@ -2,10 +2,12 @@
 
 - Playable link (web, no download): https://arnavjhajharia.github.io/seedsong/
 - Source: https://github.com/arnavjhajharia/seedsong
-- Gameplay video: `ventures/chroma-game/seedsong-media/seedsong-lantern-tide-steady.webm` (autoplay capture, ~85 s,
-  game audio included). Upload it to Google Drive or YouTube (unlisted) and paste that link as the "download link".
-  To re-record: serve the folder locally, run the PUT server (see HANDOFF), and open
-  `/?demo=1&song=0..2&diff=0..2&record=http://localhost:8766/<name>.webm`.
+- Gameplay videos (1080p, ~50-60 fps, game audio), in ventures/chroma-game/seedsong-media/:
+  - `seedsong-kite-static-wild-1080p.mp4` (80.8 s): a clean autoplay run, so the whole arrangement blooms.
+  - `seedsong-lantern-tide-wilt-and-recover-1080p.mp4`: scripted mistakes mid-song, so the garden wilts and the
+    layers drop out, then come back. It shows the core mechanic best. RECOMMENDED for the submission.
+  Upload one to Google Drive or YouTube (unlisted) and paste the link as the "download link".
+  Re-record anytime with tools/capture.sh (headless Chrome + MediaRecorder; see the comments in the script).
 - Category: Music & Rhythm. Deadline: Jan 7 2027. No entry fee.
 
 ## Title
