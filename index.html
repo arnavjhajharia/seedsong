@@ -117,9 +117,11 @@ const APPROACH = [2.0, 1.6, 1.25];
 const $ = id => document.getElementById(id);
 const cv = $('c'), cx = cv.getContext('2d');
 let W = 0, H = 0, DPR = 1, CX = 0, CY = 0, R = 0;
+const FIXED = new URLSearchParams(location.search).get('rw') ? [+new URLSearchParams(location.search).get('rw'), +(new URLSearchParams(location.search).get('rh') || 1080)] : null;
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
-  W = innerWidth; H = innerHeight;
+  DPR = FIXED ? 1 : Math.min(2, window.devicePixelRatio || 1);
+  W = FIXED ? FIXED[0] : innerWidth; H = FIXED ? FIXED[1] : innerHeight; // fixed canvas size for trailer capture
+  if (FIXED) cv.style.objectFit = 'contain';
   cv.width = W * DPR; cv.height = H * DPR;
   cx.setTransform(DPR, 0, 0, DPR, 0, 0);
   CX = W / 2; CY = H / 2; R = Math.min(W, H) * 0.26;
@@ -257,7 +259,11 @@ async function startRun() {
   const lead = 0.6;
   G = {
     def, S, diff, auto: $('auto').checked || params.has('demo'),
-    notes: S.notes.map(n => ({ ...n, state: 0 })), // 0 pending, 1 perfect, 2 good, 3 miss
+    notes: S.notes.map((n, i, all) => {
+      // ?slip=0.6 : scripted imperfect autoplay for trailers; mistakes cluster in the middle of the song, then it recovers
+      const slip = +(params.get('slip') || 0), pos = i / all.length;
+      return { ...n, state: 0, slip: slip > 0 && Math.random() < (pos > 0.42 && pos < 0.6 ? slip : 0.02) };
+    }), // state: 0 pending, 1 perfect, 2 good, 3 miss
     start: ac.currentTime + lead, nextStep: 0, nextNote: 0,
     score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, bloom: 0, active: [false, false, false, false, false],
     laneFlash: [0, 0, 0, 0], approach: APPROACH[diff], done: false, ended: false,
@@ -304,7 +310,7 @@ function schedulerTick() {
     while (G.nextNote < G.notes.length) {
       const n = G.notes[G.nextNote], t = G.start + n.t;
       if (t > horizon) break;
-      pluck(n.midi, t, n.harmony ? 0.6 : 1);
+      if (!n.slip) pluck(n.midi, t, n.harmony ? 0.6 : 1);
       G.nextNote++;
     }
   }
@@ -385,7 +391,8 @@ addEventListener('keydown', e => {
 });
 cv.addEventListener('pointerdown', e => {
   e.preventDefault();
-  const a = Math.atan2(e.clientY - CY, e.clientX - CX);
+  const rc = cv.getBoundingClientRect();
+  const a = Math.atan2((e.clientY - rc.top) * H / rc.height - CY, (e.clientX - rc.left) * W / rc.width - CX);
   let best = 0, bd = 9;
   LANE_ANG.forEach((la, i) => { let d = Math.abs(Math.atan2(Math.sin(a - la), Math.cos(a - la))); if (d < bd) { bd = d; best = i; } });
   press(best);
@@ -398,7 +405,7 @@ function togglePause() {
   if (p.classList.contains('hidden')) { ac.suspend(); show('pause'); }
   else { show('pause', false); ac.resume(); }
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden && G && !G.ended && $('pause').classList.contains('hidden')) togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !params.has('demo') && G && !G.ended && $('pause').classList.contains('hidden')) togglePause(); });
 function show(id, on = true) { $(id).classList.toggle('hidden', !on); }
 function hide(id) { show(id, false); }
 
@@ -454,6 +461,21 @@ function endRun(quit) {
 }
 
 // ---------- render ----------
+// glow is pre-rendered once per (lane, petal count): per-frame shadowBlur on 100+ flowers halved the frame rate
+const SPR_BASE = 16, SPR_PX = 96, SPR_SCALE = SPR_PX / SPR_BASE, sprCache = {};
+function flowerSprite(lane, petals) {
+  const key = lane + ':' + petals;
+  if (sprCache[key]) return sprCache[key];
+  const c = document.createElement('canvas'); c.width = c.height = SPR_PX * 2;
+  const g = c.getContext('2d'); g.scale(2, 2); g.translate(SPR_PX / 2, SPR_PX / 2);
+  const col = lane < 0 ? '#5a536b' : LANE_COL[lane], sz = SPR_BASE;
+  if (lane >= 0) { g.shadowColor = col; g.shadowBlur = 14; }
+  g.fillStyle = col;
+  for (let p = 0; p < petals; p++) { g.rotate(6.283 / petals); g.beginPath(); g.ellipse(sz * 0.9, 0, sz * 0.85, sz * 0.36, 0, 0, 6.283); g.fill(); }
+  g.shadowBlur = 0; g.fillStyle = lane < 0 ? '#3d3849' : '#fff7e8';
+  g.beginPath(); g.arc(0, 0, sz * 0.32, 0, 6.283); g.fill();
+  return (sprCache[key] = c);
+}
 function draw() {
   requestAnimationFrame(draw);
   const pnow = performance.now();
@@ -476,7 +498,7 @@ function draw() {
       for (const n of G.notes) {
         if (n.t - now > 0.5) break;
         if (n.state) continue;
-        if (G.auto && now >= n.t) { judge(n, 0); continue; }
+        if (G.auto && !n.slip && now >= n.t) { judge(n, 0); continue; }
         if (now - n.t > WIN.miss) missNote(n);
       }
       // layers follow the bloom
@@ -504,15 +526,8 @@ function draw() {
     const sz = f.size * k * pf;
     cx.save(); cx.translate(x, y); cx.rotate(f.rot + age * 0.15);
     cx.globalAlpha = alpha;
-    const col = f.wilt ? '#5a536b' : LANE_COL[f.lane];
-    if (!f.wilt) { cx.shadowColor = col; cx.shadowBlur = 14 * pf; }
-    cx.fillStyle = col;
-    for (let p = 0; p < f.petals; p++) {
-      cx.rotate(6.283 / f.petals);
-      cx.beginPath(); cx.ellipse(sz * 0.9, 0, sz * 0.85, sz * 0.36, 0, 0, 6.283); cx.fill();
-    }
-    cx.shadowBlur = 0; cx.fillStyle = f.wilt ? '#3d3849' : '#fff7e8';
-    cx.beginPath(); cx.arc(0, 0, sz * 0.32, 0, 6.283); cx.fill();
+    const spr = flowerSprite(f.wilt ? -1 : f.lane, f.petals), d = sz * SPR_SCALE;
+    cx.drawImage(spr, -d / 2, -d / 2, d, d);
     cx.restore();
   }
   cx.globalAlpha = 1;
