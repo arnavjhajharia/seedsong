@@ -31,8 +31,8 @@ your hands.
 Seedsong has three hand-tuned songs (Dawn Moss, Lantern Tide, Kite Static), each at three difficulties. Seed mode
 lets you type any word, and a new song grows from it: its own tempo, mode, chord progression and melody.
 
-All music is composed at runtime by the game's own procedural composer in WebAudio. There are no samples, no
-audio files and no downloads. Controls: arrow keys, WASD, or tap the quadrants on a phone.
+All music is composed at runtime by the game's own procedural composer, then played in WebAudio on recorded
+CC0 instrument samples (VSCO 2 Community Edition: harp, contrabass, violins, glockenspiel, drums). Controls: arrow keys, WASD, or tap the quadrants on a phone.
 
 ## Tools / AI disclosure (paste honestly)
 The code was written with an AI coding assistant (Anthropic Claude). The music is not made by an AI music model:

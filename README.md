@@ -10,7 +10,7 @@ A radial rhythm game where **the song doesn't exist until you play it**.
   roots (bass) → canopy (pads) → rustle (drums) → fireflies (arpeggio) → aurora (bells). Misses wilt flowers and strip layers.
 - Lanes follow the melody contour: melody goes up = next lane clockwise, down = counter-clockwise, repeat = jump across.
 - 3 hand-tuned songs + **seed mode**: type any word and a brand-new song (tempo, mode, chords, melody) grows from it.
-- 100% procedural WebAudio: original music, no samples, no assets, no build step, no downloads.
+- Original music composed live from the seed (procedural arrangement), played on recorded CC0 instrument samples (VSCO 2 Community Edition: harp, contrabass pizzicato, violin section, glockenspiel, drums; see audio/LICENSE-VSCO2CE.txt). No build step.
 
 Play: https://arnavjhajharia.github.io/seedsong/
 Autoplay/trailer capture: `?demo=1&song=0..2&diff=0..2` (or `&seed=word`).
