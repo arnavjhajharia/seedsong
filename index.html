@@ -447,7 +447,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') { togglePause(); return; }
   if (e.code === 'Enter' && G == null) { startRun(); return; }
-  if (e.code === 'Enter' && G && G.ended && !$('results').classList.contains('hidden')) { e.preventDefault(); nextSong(); return; }
+  if (e.code === 'Enter' && G && G.ended && !$('results').classList.contains('hidden')) { e.preventDefault(); cancelAutoNext(); nextSong(); return; }
   if (e.repeat) return;
   const l = KEYMAP[e.code];
   if (l != null) { e.preventDefault(); press(l); }
@@ -516,7 +516,24 @@ function nextSong() {
   else { const n = store.get('nextWord', 0) || 0; seedText = NEXT_WORDS[n % NEXT_WORDS.length]; store.set('nextWord', n + 1); }
   $('seed').value = seedText; renderMenu(); playAgain();
 }
-$('next').onclick = nextSong;
+// after a song the player actually played, carry on by itself: visible 5-s countdown on the Next button.
+// Any other tap or key on the results screen cancels it (the button then reads 'Next song ▸' again). Off for demo links + autoplay.
+let autoNextT = null;
+function cancelAutoNext() { if (autoNextT) { clearTimeout(autoNextT); autoNextT = null; } $('next').textContent = 'Next song ▸'; }
+function startAutoNext() {
+  if (params.has('demo')) return;
+  cancelAutoNext(); let n = 5;
+  const tick = () => {
+    if ($('results').classList.contains('hidden') || !G || !G.ended) { cancelAutoNext(); return; }
+    if (document.hidden) { autoNextT = setTimeout(tick, 1000); return; }
+    if (n <= 0) { autoNextT = null; $('next').textContent = 'Next song ▸'; nextSong(); return; }
+    $('next').textContent = `Next song in ${n}…`; n--; autoNextT = setTimeout(tick, 1000);
+  };
+  tick();
+}
+$('results').addEventListener('pointerdown', e => { if (autoNextT && !e.target.closest('#next')) cancelAutoNext(); }, true);
+addEventListener('keydown', e => { if (autoNextT && e.code !== 'Enter') cancelAutoNext(); }, true);
+$('next').onclick = () => { cancelAutoNext(); nextSong(); };
 $('back').onclick = () => { G = null; hide('results'); show('menu'); renderMenu(); };
 // share: a link that opens the exact same song (built-in or seed-grown) on the same difficulty
 $('share').onclick = async () => {
@@ -562,7 +579,8 @@ function endRun(quit) {
     if (!prev || G.score > prev.score) store.set(k, { score: G.score, grade });
   }
   if (window.Portal && !G.auto && (grade === 'S' || grade === 'A')) Portal.happy();
-  setTimeout(() => show('results'), 900);
+  const played = !G.auto && (G.perfect + G.good) > 0;
+  setTimeout(() => { show('results'); if (played) startAutoNext(); }, 900);
   if (recorder && recorder.state === 'recording') setTimeout(() => recorder.stop(), 3500);
 }
 
