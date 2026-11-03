@@ -21,12 +21,13 @@
   .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px;
     background: radial-gradient(ellipse at 50% 40%, rgba(20,14,40,.55), rgba(7,6,15,.92)); transition: opacity .4s; overflow-y: auto; }
   .overlay.hidden { opacity: 0; pointer-events: none; }
-  .panel { width: min(680px, 100%); text-align: center; }
+  .panel { width: min(680px, 100%); min-width: 0; text-align: center; overflow-wrap: anywhere; }
   h1 { font-family: 'Fraunces', serif; font-weight: 300; font-size: clamp(48px, 11vw, 104px); letter-spacing: -.02em; line-height: .9;
     background: linear-gradient(100deg, var(--l0), var(--l1) 35%, var(--l2) 65%, var(--l3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .tag { font-family: 'Fraunces', serif; font-style: italic; font-size: clamp(16px, 2.6vw, 21px); color: var(--ink); opacity: .85; margin: 14px 0 26px; }
-  .songs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
-  @media (max-width: 560px) { .songs { grid-template-columns: 1fr; } }
+  .songs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 560px) { .songs { grid-template-columns: minmax(0, 1fr); } .song { padding: 10px 12px; } .song .best { min-height: 0; margin-top: 2px; }
+    .tag { margin: 10px 0 16px; } .help { font-size: 10.5px; } .overlay { align-items: flex-start; padding: 28px 16px; } .foot { display: none; } }
   .song { border: 1px solid rgba(243,236,223,.16); border-radius: 14px; padding: 14px 12px; cursor: pointer; background: rgba(255,255,255,.02);
     transition: border-color .2s, background .2s, transform .15s; text-align: left; color: var(--ink); font: inherit; }
   .song:hover { transform: translateY(-2px); }
@@ -35,7 +36,7 @@
   .song small { color: var(--dim); font-size: 11px; display: block; margin-top: 3px; }
   .song .best { color: var(--l1); font-size: 11px; margin-top: 6px; display: block; min-height: 14px; }
   .seedrow { display: flex; gap: 8px; margin-bottom: 18px; }
-  .seedrow input { flex: 1; background: rgba(255,255,255,.04); border: 1px dashed rgba(243,236,223,.25); color: var(--ink); border-radius: 12px;
+  .seedrow input { flex: 1; min-width: 0; background: rgba(255,255,255,.04); border: 1px dashed rgba(243,236,223,.25); color: var(--ink); border-radius: 12px;
     padding: 11px 14px; font: inherit; font-size: 13px; outline: none; }
   .seedrow input:focus { border-color: var(--l3); }
   .seedrow input.sel { border-style: solid; border-color: var(--ink); background: rgba(255,255,255,.07); }
@@ -66,7 +67,7 @@
     <h1>Seedsong</h1>
     <p class="tag">The song doesn’t exist until you play it.</p>
     <div class="songs" id="songs"></div>
-    <div class="seedrow"><input id="seed" maxlength="40" placeholder="…or type any word to grow a brand-new song" autocomplete="off" spellcheck="false"></div>
+    <div class="seedrow"><input id="seed" maxlength="40" placeholder="…or type any word to grow a new song" autocomplete="off" spellcheck="false"></div>
     <div class="row" id="diffs"></div>
     <button class="go" id="go">Plant ▸</button>
     <div class="settings">
