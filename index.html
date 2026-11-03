@@ -58,6 +58,10 @@
   .stats b { display: block; font-size: 20px; } .stats small { color: var(--dim); font-size: 10.5px; }
   .foot { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: rgba(154,147,168,.6); pointer-events: none; }
   body.playing .foot { display: none; }
+  .cbtn { position: fixed; bottom: 10px; z-index: 6; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.22);
+    background: rgba(10,8,20,.45); color: #fff; font: 17px/42px system-ui, sans-serif; padding: 0; cursor: pointer; opacity: .75; -webkit-tap-highlight-color: transparent; }
+  .cbtn:hover { opacity: 1; }
+  #snd { left: 10px; } #pz { left: 62px; display: none; font-size: 13px; } body.playing #pz { display: block; }
   #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--dim); pointer-events: none; }
   /* first visit: one big button, everything else one tap away */
   body.first #songs, body.first .seedrow, body.first #diffs, body.first .settings, body.first .help, body.first #today { display: none; }
@@ -95,6 +99,7 @@
   </div>
 </div>
 
+<button id="snd" class="cbtn" type="button" aria-label="Mute">🔊</button><button id="pz" class="cbtn" type="button" aria-label="Pause">❚❚</button>
 <div class="overlay hidden" id="pause">
   <div class="panel">
     <h1 style="font-size:64px">paused</h1>
@@ -162,7 +167,7 @@ function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-  master = ac.createGain(); master.gain.value = 0.62;
+  master = ac.createGain(); master.gain.value = store.get('muted', false) ? 0 : 0.62;
   const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
   master.connect(comp); comp.connect(ac.destination);
   masterOut = comp;
@@ -565,6 +570,13 @@ if (!params.has('demo')) {
   renderMenu();
 }
 $('resume').onclick = togglePause;
+// on-screen sound + pause (judges on a phone have no keyboard). Mute = master gain, so the song clock keeps running.
+function setMuted(on) { store.set('muted', on); $('snd').textContent = on ? '🔇' : '🔊'; $('snd').setAttribute('aria-pressed', String(on)); if (master) master.gain.setTargetAtTime(on ? 0 : 0.62, ac.currentTime, 0.02); }
+for (const id of ['snd', 'pz']) $(id).addEventListener('pointerdown', e => e.stopPropagation());
+$('snd').onclick = e => { e.stopPropagation(); e.currentTarget.blur(); setMuted(!store.get('muted', false)); };
+$('pz').onclick = e => { e.stopPropagation(); e.currentTarget.blur(); togglePause(); };
+setMuted(store.get('muted', false));
+setTimeout(() => { if ($('pq')) $('pz').remove(); }); // portal builds already add their own ❚❚ pause chip
 $('quit').onclick = () => { endRun(true); hide('pause'); ac.resume(); show('menu'); renderMenu(); };
 $('offset').value = offsetMs; $('offv').textContent = offsetMs + ' ms';
 $('offset').oninput = e => { offsetMs = +e.target.value; $('offv').textContent = offsetMs + ' ms'; store.set('offset', offsetMs); };
