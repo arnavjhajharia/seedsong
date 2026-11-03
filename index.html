@@ -194,13 +194,21 @@ const INST = {
   glock: [['G5', 79.08], ['C6', 84.12], ['G6', 91.12], ['C7', 96.15], ['G7', 103.16], ['C8', 108.24]],
 };
 const SMP = {}; let smpReady = null;
+const SMP_NAMES = ['kick', 'snare', 'tamb', 'claves'];
+for (const k in INST) for (const [n] of INST[k]) SMP_NAMES.push(k + '_' + n);
+// download the samples while the menu is showing (no AudioContext needed for that), so the first tap only has to decode:
+// on a slow phone the ~0.9 MB used to start downloading only after the tap, a few seconds of 'tuning the harp…' with nothing on screen
+const PREF = {}, LATER = /^(vln|glock|bass)_/; // canopy/fireflies/aurora/roots only bloom in after a few hits
+const pre = n => PREF[n] || (PREF[n] = fetch('audio/' + n + '.mp3').then(r => r.arrayBuffer()).catch(() => null));
+Promise.all(SMP_NAMES.filter(n => !LATER.test(n)).map(pre)).then(() => SMP_NAMES.filter(n => LATER.test(n)).forEach(pre));
 function loadSamples() {
   if (smpReady) return smpReady;
-  const names = ['kick', 'snare', 'tamb', 'claves'];
-  for (const k in INST) for (const [n] of INST[k]) names.push(k + '_' + n);
-  smpReady = Promise.all(names.map(n => fetch('audio/' + n + '.mp3').then(r => r.arrayBuffer())
+  const dec = n => pre(n).then(b => b || fetch('audio/' + n + '.mp3').then(r => r.arrayBuffer()))
     .then(b => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then(buf => { SMP[n] = buf; })
-    .catch(e => console.warn('sample', n, e))));
+    .catch(e => console.warn('sample', n, e));
+  // the song can start once drums + harp (what your hits play) are in; the later layers decode in the background
+  smpReady = Promise.all(SMP_NAMES.filter(n => !LATER.test(n)).map(dec));
+  smpReady.then(() => Promise.all(SMP_NAMES.filter(n => LATER.test(n)).map(dec)));
   return smpReady;
 }
 function smp(name, dest, t, peak, dec, rate = 1, a = 0.002) {
