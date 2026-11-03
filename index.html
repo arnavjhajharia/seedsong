@@ -59,6 +59,13 @@
   .foot { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: rgba(154,147,168,.6); pointer-events: none; }
   body.playing .foot { display: none; }
   #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--dim); pointer-events: none; }
+  /* first visit: one big button, everything else one tap away */
+  body.first #songs, body.first .seedrow, body.first #diffs, body.first .settings, body.first .help, body.first #today { display: none; }
+  #more { display: none; margin-top: 14px; }
+  body.first #more { display: inline-block; }
+  body.first .go { font-size: 28px; padding: 16px 64px; }
+  .firsthint { display: none; color: var(--dim); font-size: 13px; margin-top: 16px; line-height: 1.6; }
+  body.first .firsthint { display: block; }
 </style>
 </head>
 <body>
@@ -72,6 +79,8 @@
     <div class="seedrow"><input id="seed" maxlength="40" placeholder="…or type any word to grow a new song" autocomplete="off" spellcheck="false"></div>
     <div class="row" id="diffs"></div>
     <button class="go" id="go">Plant ▸</button>
+    <p class="firsthint">Seeds fly out from the centre. Tap the side they head to (or use the arrow keys) as they cross the ring.</p>
+    <br><button class="chip" id="more">more songs &amp; settings</button>
     <div class="settings">
       <span>audio offset <input type="range" id="offset" min="-150" max="150" step="5" value="0"> <span id="offv">0 ms</span></span>
       <button class="chip" id="calib" style="padding:4px 12px;font-size:11px">tap to calibrate</button>
@@ -113,7 +122,7 @@
 </div>
 
 <div id="toast"></div>
-<div class="foot">original procedural music · made with WebAudio · no downloads</div>
+<div class="foot">original music, composed as you play · CC0 recorded instruments · no downloads</div>
 
 <script src="songgen.js"></script>
 <script>
@@ -467,6 +476,7 @@ function hide(id) { show(id, false); }
 // ---------- menu ----------
 function renderMenu() {
   document.body.classList.remove('playing');
+  if (store.get('tutDone', false) && document.body.classList.contains('first')) { document.body.classList.remove('first'); $('go').textContent = 'Plant ▸'; }
   const box = $('songs'); box.innerHTML = '';
   SG.SONGS.forEach((s, i) => {
     const b = document.createElement('button'); b.className = 'song' + (!seedText && i === songIdx ? ' sel' : '');
@@ -485,6 +495,15 @@ function renderMenu() {
 }
 $('seed').addEventListener('input', e => { seedText = e.target.value.trim(); renderMenu(); });
 $('go').onclick = startRun;
+// first visit (no finished tutorial, no shared-song link): show only the Play button; a tap on empty menu space also starts
+if (!store.get('tutDone', false) && !params.has('song') && !params.has('seed') && !params.has('demo')) {
+  document.body.classList.add('first'); $('go').textContent = 'Play ▸';
+  $('more').onclick = e => { e.stopPropagation(); document.body.classList.remove('first'); $('go').textContent = 'Plant ▸'; };
+  $('menu').addEventListener('pointerdown', e => {
+    if (!document.body.classList.contains('first') || e.target.closest('button,input,label')) return;
+    e.preventDefault(); startRun();
+  });
+}
 // between songs a portal (if any) may show an ad; Portal.midgame always continues
 let runsPlayed = 0;
 function playAgain() { if (window.Portal && runsPlayed > 0 && !params.has('demo')) Portal.midgame(startRun); else startRun(); }
