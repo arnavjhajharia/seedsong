@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Seedsong — a rhythm garden where the song grows from your hits</title>
+<meta name="description" content="A radial rhythm game where the song doesn't exist until you play it. Every hit plays the melody and plants a flower that joins the arrangement. Fully procedural music, runs in your browser.">
+<meta property="og:title" content="Seedsong">
+<meta property="og:description" content="The song doesn't exist until you play it. A radial rhythm garden in your browser.">
+<meta property="og:image" content="https://arnavjhajharia.github.io/seedsong/og.png">
+<meta name="theme-color" content="#07060f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#f3ecdf; --dim:#9a93a8; --bg:#07060f; --l0:#ff7ab6; --l1:#ffd36e; --l2:#6ee7ff; --l3:#9dff8a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none;
+    font-family: 'Space Mono', ui-monospace, monospace; -webkit-user-select: none; user-select: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: radial-gradient(ellipse at 50% 40%, rgba(20,14,40,.55), rgba(7,6,15,.92)); transition: opacity .4s; overflow-y: auto; }
+  .overlay.hidden { opacity: 0; pointer-events: none; }
+  .panel { width: min(680px, 100%); text-align: center; }
+  h1 { font-family: 'Fraunces', serif; font-weight: 300; font-size: clamp(48px, 11vw, 104px); letter-spacing: -.02em; line-height: .9;
+    background: linear-gradient(100deg, var(--l0), var(--l1) 35%, var(--l2) 65%, var(--l3)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tag { font-family: 'Fraunces', serif; font-style: italic; font-size: clamp(16px, 2.6vw, 21px); color: var(--ink); opacity: .85; margin: 14px 0 26px; }
+  .songs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 560px) { .songs { grid-template-columns: 1fr; } }
+  .song { border: 1px solid rgba(243,236,223,.16); border-radius: 14px; padding: 14px 12px; cursor: pointer; background: rgba(255,255,255,.02);
+    transition: border-color .2s, background .2s, transform .15s; text-align: left; color: var(--ink); font: inherit; }
+  .song:hover { transform: translateY(-2px); }
+  .song.sel { border-color: var(--ink); background: rgba(255,255,255,.07); }
+  .song b { display: block; font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; }
+  .song small { color: var(--dim); font-size: 11px; display: block; margin-top: 3px; }
+  .song .best { color: var(--l1); font-size: 11px; margin-top: 6px; display: block; min-height: 14px; }
+  .seedrow { display: flex; gap: 8px; margin-bottom: 18px; }
+  .seedrow input { flex: 1; background: rgba(255,255,255,.04); border: 1px dashed rgba(243,236,223,.25); color: var(--ink); border-radius: 12px;
+    padding: 11px 14px; font: inherit; font-size: 13px; outline: none; }
+  .seedrow input:focus { border-color: var(--l3); }
+  .seedrow input.sel { border-style: solid; border-color: var(--ink); background: rgba(255,255,255,.07); }
+  .row { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .chip { border: 1px solid rgba(243,236,223,.2); background: transparent; color: var(--dim); border-radius: 999px; padding: 7px 16px; font: inherit; font-size: 12px; cursor: pointer; }
+  .chip.sel { color: var(--bg); background: var(--ink); border-color: var(--ink); }
+  .go { font-family: 'Fraunces', serif; font-size: 22px; padding: 12px 44px; border-radius: 999px; border: none; cursor: pointer; color: var(--bg);
+    background: linear-gradient(100deg, var(--l0), var(--l1)); box-shadow: 0 0 40px rgba(255,122,182,.35); }
+  .go:active { transform: scale(.97); }
+  .help { color: var(--dim); font-size: 11.5px; line-height: 1.7; margin-top: 20px; }
+  .help kbd { border: 1px solid rgba(243,236,223,.25); border-radius: 4px; padding: 0 5px; color: var(--ink); }
+  .settings { display: flex; justify-content: center; gap: 18px; align-items: center; color: var(--dim); font-size: 11.5px; margin-top: 12px; flex-wrap: wrap; }
+  .settings input[type=range] { width: 120px; accent-color: var(--l2); vertical-align: middle; }
+  .settings label { cursor: pointer; }
+  .grade { font-family: 'Fraunces', serif; font-size: clamp(80px, 18vw, 150px); line-height: 1; font-weight: 300; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0 22px; }
+  .stats div { border: 1px solid rgba(243,236,223,.12); border-radius: 12px; padding: 10px 4px; }
+  .stats b { display: block; font-size: 20px; } .stats small { color: var(--dim); font-size: 10.5px; }
+  .foot { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: rgba(154,147,168,.6); pointer-events: none; }
+  #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--dim); pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div class="overlay" id="menu">
+  <div class="panel">
+    <h1>Seedsong</h1>
+    <p class="tag">The song doesn’t exist until you play it.</p>
+    <div class="songs" id="songs"></div>
+    <div class="seedrow"><input id="seed" maxlength="40" placeholder="…or type any word to grow a brand-new song" autocomplete="off" spellcheck="false"></div>
+    <div class="row" id="diffs"></div>
+    <button class="go" id="go">Plant ▸</button>
+    <div class="settings">
+      <span>audio offset <input type="range" id="offset" min="-150" max="150" step="5" value="0"> <span id="offv">0 ms</span></span>
+      <label><input type="checkbox" id="auto"> watch (autoplay)</label>
+    </div>
+    <p class="help">
+      Seeds fly out from the centre. Hit them as they cross the ring:
+      <kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd><kbd>←</kbd> or <kbd>W</kbd><kbd>D</kbd><kbd>S</kbd><kbd>A</kbd>, or tap the quadrant.<br>
+      Every hit <i>is</i> a melody note and plants a flower. Flowers bloom new layers into the song —
+      roots, canopy, rustle, fireflies, aurora. Misses wilt them. <kbd>Esc</kbd> pauses.
+    </p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="pause">
+  <div class="panel">
+    <h1 style="font-size:64px">paused</h1>
+    <p class="tag">the garden waits.</p>
+    <div class="row"><button class="go" id="resume">Resume</button><button class="chip" id="quit">Quit to menu</button></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="results">
+  <div class="panel">
+    <p class="tag" id="rtitle" style="margin:0 0 6px"></p>
+    <div class="grade" id="rgrade"></div>
+    <div class="stats" id="rstats"></div>
+    <div class="row"><button class="go" id="again">Grow it again</button><button class="chip" id="back">Menu</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div class="foot">original procedural music · made with WebAudio · no downloads</div>
+
+<script src="songgen.js"></script>
+<script>
+'use strict';
+const LANE_COL = ['#ff7ab6', '#ffd36e', '#6ee7ff', '#9dff8a'];
+const LANE_ANG = [-Math.PI / 2, 0, Math.PI / 2, Math.PI]; // up, right, down, left
+const LAYERS = [
+  { name: 'roots', at: 12 }, { name: 'canopy', at: 30 }, { name: 'rustle', at: 48 }, { name: 'fireflies', at: 66 }, { name: 'aurora', at: 84 },
+];
+const WIN = { perfect: 0.05, good: 0.1, miss: 0.14 };
+const DIFFS = ['gentle', 'steady', 'wild'];
+const APPROACH = [2.0, 1.6, 1.25];
+
+const $ = id => document.getElementById(id);
+const cv = $('c'), cx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, CX = 0, CY = 0, R = 0;
+function resize() {
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  CX = W / 2; CY = H / 2; R = Math.min(W, H) * 0.26;
+}
+addEventListener('resize', resize); resize();
+
+const params = new URLSearchParams(location.search);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('seedsong:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('seedsong:' + k, JSON.stringify(v)); } catch {} },
+};
+
+// ---------- audio ----------
+let ac = null, master, reverb, revSend, layerGain = [], heartGain, melodyBus;
+function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  master = ac.createGain(); master.gain.value = 0.8;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  master.connect(comp); comp.connect(ac.destination);
+  // generated impulse reverb
+  reverb = ac.createConvolver();
+  const len = ac.sampleRate * 2.8, ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  reverb.buffer = ir;
+  revSend = ac.createGain(); revSend.gain.value = 0.35; revSend.connect(reverb); reverb.connect(master);
+  // melody bus with feedback delay
+  melodyBus = ac.createGain(); melodyBus.gain.value = 0.9; melodyBus.connect(master); melodyBus.connect(revSend);
+  const dly = ac.createDelay(1), fb = ac.createGain(), dlf = ac.createBiquadFilter();
+  dlf.type = 'lowpass'; dlf.frequency.value = 2400; fb.gain.value = 0.28;
+  melodyBus.connect(dly); dly.connect(dlf); dlf.connect(fb); fb.connect(dly); dlf.connect(master);
+  melodyBus._dly = dly;
+  heartGain = ac.createGain(); heartGain.gain.value = 0.55; heartGain.connect(master);
+  layerGain = LAYERS.map(() => { const g = ac.createGain(); g.gain.value = 0; g.connect(master); g.connect(revSend); return g; });
+  noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+  const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+}
+let noiseBuf;
+
+function env(g, t, a, peak, dec) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(peak, t + a);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec);
+}
+function tone(dest, type, freq, t, a, peak, dec, detune = 0) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = freq; o.detune.value = detune;
+  env(g, t, a, peak, dec); o.connect(g); g.connect(dest);
+  o.start(t); o.stop(t + a + dec + 0.05);
+}
+function pluck(midi, t, vel = 1) { // the melody voice: what your hits play
+  const f = midiHz(midi);
+  const flt = ac.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = 2;
+  flt.frequency.setValueAtTime(f * 8, t); flt.frequency.exponentialRampToValueAtTime(f * 2, t + 0.4);
+  flt.connect(melodyBus);
+  tone(flt, 'triangle', f, t, 0.004, 0.32 * vel, 0.9);
+  tone(flt, 'sine', f * 2, t, 0.004, 0.12 * vel, 0.5);
+  tone(flt, 'sawtooth', f, t, 0.004, 0.035 * vel, 0.25, 7);
+}
+function noise(dest, t, dur, hp, peak) {
+  const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = noiseBuf; f.type = 'highpass'; f.frequency.value = hp;
+  env(g, t, 0.002, peak, dur); s.connect(f); f.connect(g); g.connect(dest);
+  s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+}
+function kick(dest, t, peak) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18);
+  env(g, t, 0.003, peak, 0.3); o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.4);
+}
+
+// background arrangement, scheduled per 16th step
+function scheduleStep(S, step, t) {
+  const bar = S.bars[Math.floor(step / 16)]; if (!bar) return;
+  const s = step % 16, sc = S.scale, root = S.root, ch = bar.chord;
+  const dm = d => SG.degMidi(d, root, sc);
+  const spb = S.spb;
+  // heartbeat: always on, it is the seed's pulse
+  if (s === 0 || s === 8) kick(heartGain, t, s === 0 ? 0.5 : 0.3);
+  if (s % 4 === 0 && step < 32) tone(heartGain, 'sine', midiHz(dm(ch) + 36), t, 0.002, 0.05, 0.08); // count-in ticks
+  // L0 roots: bass
+  if (s === 0 || s === 8 || (bar.energy >= 1 && s === 14) || (bar.energy === 2 && s === 6)) {
+    const deg = s === 8 ? ch + 4 : ch;
+    const f = midiHz(dm(deg) - 12);
+    const flt = ac.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 420; flt.connect(layerGain[0]);
+    tone(flt, 'sawtooth', f, t, 0.01, 0.32, spb * 1.6);
+    tone(layerGain[0], 'sine', f, t, 0.01, 0.4, spb * 1.6);
+  }
+  // L1 canopy: chord pad per bar
+  if (s === 0) {
+    for (const d of [ch, ch + 2, ch + 4]) {
+      const f = midiHz(dm(d) + 12);
+      tone(layerGain[1], 'triangle', f, t, 0.6, 0.05, spb * 4, -6);
+      tone(layerGain[1], 'sine', f, t, 0.6, 0.06, spb * 4, 6);
+    }
+  }
+  // L2 rustle: drums
+  if (s === 4 || s === 12) noise(layerGain[2], t, 0.16, 1400, 0.22);
+  if (s % 2 === 0) noise(layerGain[2], t, 0.035, 7000, s % 4 === 2 ? 0.14 : 0.07);
+  if (s === 0 || s === 8 || (bar.energy === 2 && s === 10)) kick(layerGain[2], t, 0.55);
+  // L3 fireflies: arpeggio
+  { const arp = [ch, ch + 2, ch + 4, ch + 7, ch + 4, ch + 2]; const d = arp[step % arp.length];
+    tone(layerGain[3], 'square', midiHz(dm(d) + 24), t, 0.003, 0.025, 0.12); }
+  // L4 aurora: bell + high drone shimmer
+  if (s === 0 || s === 10) {
+    const f = midiHz(dm(ch + (s === 0 ? 7 : 9)) + 24);
+    tone(layerGain[4], 'sine', f, t, 0.002, 0.1, 1.6);
+    tone(layerGain[4], 'sine', f * 2.76, t, 0.002, 0.03, 0.6);
+  }
+}
+
+// ---------- game state ----------
+let songIdx = store.get('song', 0), diff = store.get('diff', 1), seedText = '';
+let G = null; // current run
+let offsetMs = store.get('offset', 0);
+const flowers = [], particles = [], judgements = [];
+let menuT0 = performance.now();
+
+function currentDef() { return seedText ? SG.songFromText(seedText) : SG.SONGS[songIdx]; }
+function bestKey(def, d) { return 'best:' + def.id + ':' + d; }
+
+let starting = false;
+async function startRun() {
+  initAudio();
+  if (starting) return;
+  if (G && !G.ended) { clearInterval(G.timer); G.ended = true; }
+  starting = true;
+  if (ac.state !== 'running') { toast('tap anywhere to start the sound'); await ac.resume(); }
+  starting = false;
+  const def = currentDef();
+  const S = SG.build(def, diff);
+  flowers.length = 0; particles.length = 0; judgements.length = 0;
+  const lead = 0.6;
+  G = {
+    def, S, diff, auto: $('auto').checked || params.has('demo'),
+    notes: S.notes.map(n => ({ ...n, state: 0 })), // 0 pending, 1 perfect, 2 good, 3 miss
+    start: ac.currentTime + lead, nextStep: 0, nextNote: 0,
+    score: 0, combo: 0, maxCombo: 0, perfect: 0, good: 0, miss: 0, bloom: 0, active: [false, false, false, false, false],
+    laneFlash: [0, 0, 0, 0], approach: APPROACH[diff], done: false, ended: false,
+    endT: (S.totalSteps) * S.stepDur + 0.4,
+    gainPerHit: 100 / (S.notes.length * 0.55), // the full arrangement arrives about halfway through a clean run
+  };
+  layerGain.forEach(g => { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setValueAtTime(0, ac.currentTime); });
+  melodyBus._dly.delayTime.value = S.spb * 0.75;
+  hide('menu'); hide('results'); hide('pause');
+  clearInterval(G.timer);
+  G.timer = setInterval(schedulerTick, 25);
+  schedulerTick();
+}
+function gameTime() { return ac.currentTime - G.start - (offsetMs / 1000) - (ac.outputLatency || 0); }
+
+function schedulerTick() {
+  if (!G || G.ended) return;
+  const S = G.S, horizon = ac.currentTime + 0.15;
+  while (G.nextStep < S.totalSteps + 1) {
+    const t = G.start + G.nextStep * S.stepDur;
+    if (t > horizon) break;
+    scheduleStep(S, G.nextStep, t);
+    G.nextStep++;
+  }
+  if (G.auto) {
+    while (G.nextNote < G.notes.length) {
+      const n = G.notes[G.nextNote], t = G.start + n.t;
+      if (t > horizon) break;
+      pluck(n.midi, t, n.harmony ? 0.6 : 1);
+      G.nextNote++;
+    }
+  }
+}
+
+function judge(n, delta) {
+  const ad = Math.abs(delta);
+  const kind = ad <= WIN.perfect ? 1 : 2;
+  n.state = kind;
+  G.combo++; G.maxCombo = Math.max(G.maxCombo, G.combo);
+  if (kind === 1) G.perfect++; else G.good++;
+  const mult = 1 + Math.min(G.combo, 50) / 50;
+  G.score += Math.round((kind === 1 ? 300 : 120) * mult);
+  G.bloom = Math.min(100, G.bloom + (kind === 1 ? 1 : 0.6) * G.gainPerHit);
+  plant(n.lane, kind);
+  G.laneFlash[n.lane] = 1;
+  judgements.push({ lane: n.lane, text: kind === 1 ? 'bloom' : 'sprout', col: LANE_COL[n.lane], t: performance.now() });
+  burst(n.lane, kind === 1 ? 18 : 9);
+}
+function missNote(n) {
+  n.state = 3; G.miss++; G.combo = 0;
+  G.bloom = Math.max(0, G.bloom - 3 * G.gainPerHit);
+  wilt(n.lane);
+  judgements.push({ lane: n.lane, text: 'wilt', col: '#7d7590', t: performance.now() });
+}
+
+function press(lane) {
+  if (!G || G.ended || G.auto || !$('pause').classList.contains('hidden')) return;
+  const now = gameTime();
+  G.laneFlash[lane] = Math.max(G.laneFlash[lane], 0.5);
+  let best = null, bd = 1e9;
+  for (let i = 0; i < G.notes.length; i++) {
+    const n = G.notes[i];
+    if (n.t - now > WIN.miss) break;
+    if (n.state || n.lane !== lane) continue;
+    const d = Math.abs(n.t - now);
+    if (d <= WIN.miss && d < bd) { bd = d; best = n; }
+  }
+  if (best) {
+    if (bd <= WIN.good) { pluck(best.midi, ac.currentTime, best.harmony ? 0.6 : 1); judge(best, now - best.t); }
+    else missNote(best); // way off: the note is lost
+  }
+}
+
+// ---------- garden ----------
+function plant(lane, kind) {
+  const a = LANE_ANG[lane] + (Math.random() - 0.5) * 1.35;
+  const maxR = Math.hypot(W, H) / 2;
+  const rr = R * 1.18 + Math.pow(Math.random(), 0.8) * Math.min(maxR - R * 1.18, R * 1.4);
+  flowers.push({ lane, a, r: rr, size: (kind === 1 ? 9 : 6.5) + Math.random() * 5, petals: 5 + Math.floor(Math.random() * 4),
+    rot: Math.random() * 6.28, born: performance.now(), wilt: 0, phase: Math.floor(Math.random() * 4) });
+  if (flowers.length > 220) flowers.shift();
+}
+function wilt(lane) {
+  let k = 0;
+  for (let i = flowers.length - 1; i >= 0 && k < 2; i--) if (flowers[i].lane === lane && !flowers[i].wilt) { flowers[i].wilt = performance.now(); k++; }
+}
+function burst(lane, n) {
+  const a0 = LANE_ANG[lane];
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (Math.random() - 0.5) * 1.2, sp = 60 + Math.random() * 220;
+    particles.push({ x: CX + Math.cos(a0) * R, y: CY + Math.sin(a0) * R, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, col: LANE_COL[lane] });
+  }
+}
+
+// ---------- input ----------
+const KEYMAP = { ArrowUp: 0, KeyW: 0, KeyI: 0, ArrowRight: 1, KeyD: 1, KeyL: 1, ArrowDown: 2, KeyS: 2, KeyK: 2, ArrowLeft: 3, KeyA: 3, KeyJ: 3 };
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox' && e.target.type !== 'range') {
+    if (e.key === 'Enter') { e.preventDefault(); startRun(); }
+    return;
+  }
+  if (e.code === 'Escape') { togglePause(); return; }
+  if (e.code === 'Enter' && G == null) { startRun(); return; }
+  if (e.repeat) return;
+  const l = KEYMAP[e.code];
+  if (l != null) { e.preventDefault(); press(l); }
+});
+cv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const a = Math.atan2(e.clientY - CY, e.clientX - CX);
+  let best = 0, bd = 9;
+  LANE_ANG.forEach((la, i) => { let d = Math.abs(Math.atan2(Math.sin(a - la), Math.cos(a - la))); if (d < bd) { bd = d; best = i; } });
+  press(best);
+});
+function unlockAudio() { if (ac && ac.state === 'suspended' && $('pause').classList.contains('hidden')) ac.resume(); }
+addEventListener('pointerdown', unlockAudio, true); addEventListener('keydown', unlockAudio, true);
+function togglePause() {
+  if (!G || G.ended) return;
+  const p = $('pause');
+  if (p.classList.contains('hidden')) { ac.suspend(); show('pause'); }
+  else { show('pause', false); ac.resume(); }
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && G && !G.ended && $('pause').classList.contains('hidden')) togglePause(); });
+function show(id, on = true) { $(id).classList.toggle('hidden', !on); }
+function hide(id) { show(id, false); }
+
+// ---------- menu ----------
+function renderMenu() {
+  const box = $('songs'); box.innerHTML = '';
+  SG.SONGS.forEach((s, i) => {
+    const b = document.createElement('button'); b.className = 'song' + (!seedText && i === songIdx ? ' sel' : '');
+    const best = store.get(bestKey(s, diff), null);
+    b.innerHTML = `<b>${s.title}</b><small>${s.mood} · ${s.bpm} bpm · ${s.mode}</small><span class="best">${best ? 'best ' + best.grade + ' · ' + best.score.toLocaleString() : ''}</span>`;
+    b.onclick = () => { songIdx = i; seedText = ''; $('seed').value = ''; store.set('song', i); renderMenu(); };
+    box.appendChild(b);
+  });
+  $('seed').classList.toggle('sel', !!seedText);
+  const dbox = $('diffs'); dbox.innerHTML = '';
+  DIFFS.forEach((d, i) => {
+    const b = document.createElement('button'); b.className = 'chip' + (i === diff ? ' sel' : ''); b.textContent = d;
+    b.onclick = () => { diff = i; store.set('diff', i); renderMenu(); };
+    dbox.appendChild(b);
+  });
+}
+$('seed').addEventListener('input', e => { seedText = e.target.value.trim(); renderMenu(); });
+$('go').onclick = startRun;
+$('again').onclick = startRun;
+$('back').onclick = () => { G = null; hide('results'); show('menu'); renderMenu(); };
+$('resume').onclick = togglePause;
+$('quit').onclick = () => { endRun(true); hide('pause'); ac.resume(); show('menu'); renderMenu(); };
+$('offset').value = offsetMs; $('offv').textContent = offsetMs + ' ms';
+$('offset').oninput = e => { offsetMs = +e.target.value; $('offv').textContent = offsetMs + ' ms'; store.set('offset', offsetMs); };
+renderMenu();
+
+function endRun(quit) {
+  if (!G) return;
+  G.ended = true; clearInterval(G.timer);
+  layerGain.forEach(g => g.gain.setTargetAtTime(0, ac.currentTime, 0.6));
+  if (quit) { G = null; return; }
+  const total = G.notes.length;
+  const acc = (G.perfect + G.good * 0.6) / total;
+  const grade = acc >= 0.95 ? 'S' : acc >= 0.88 ? 'A' : acc >= 0.76 ? 'B' : acc >= 0.6 ? 'C' : 'seed';
+  const full = G.miss === 0;
+  $('rtitle').textContent = `${G.def.title} · ${DIFFS[G.diff]}${G.auto ? ' · autoplay' : ''}`;
+  $('rgrade').textContent = grade; $('rgrade').style.color = grade === 'S' ? LANE_COL[1] : grade === 'seed' ? '#9a93a8' : 'var(--ink)';
+  $('rstats').innerHTML = [
+    [G.score.toLocaleString(), 'score'], [(acc * 100).toFixed(1) + '%', 'accuracy'],
+    [G.maxCombo + (full ? ' ✿' : ''), full ? 'full bloom' : 'best chain'], [flowers.filter(f => !f.wilt).length, 'flowers'],
+  ].map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('');
+  if (!G.auto) {
+    const k = bestKey(G.def, G.diff), prev = store.get(k, null);
+    if (!prev || G.score > prev.score) store.set(k, { score: G.score, grade });
+  }
+  setTimeout(() => show('results'), 900);
+}
+
+// ---------- render ----------
+function draw() {
+  requestAnimationFrame(draw);
+  const pnow = performance.now();
+  // night garden backdrop
+  cx.setTransform(DPR, 0, 0, DPR, 0, 0); cx.shadowBlur = 0; cx.globalAlpha = 1;
+  cx.globalCompositeOperation = 'source-over';
+  cx.fillStyle = '#07060f'; cx.fillRect(0, 0, W, H);
+  const bloom = G ? G.bloom : 30 + 20 * Math.sin(pnow / 3000);
+  const bg = cx.createRadialGradient(CX, CY, 0, CX, CY, Math.hypot(W, H) / 1.6);
+  bg.addColorStop(0, `rgba(${40 + bloom * 0.5},${18 + bloom * 0.25},${70 + bloom * 0.4},0.65)`);
+  bg.addColorStop(1, 'rgba(7,6,15,0)');
+  cx.fillStyle = bg; cx.fillRect(0, 0, W, H);
+
+  let now = 0, beatPh = (pnow / 700) % 1, spb = 0.7;
+  if (G && ac) {
+    now = gameTime(); spb = G.S.spb;
+    beatPh = now > 0 ? (now / spb) % 1 : 0;
+    // misses
+    if (!G.ended) {
+      for (const n of G.notes) {
+        if (n.t - now > 0.5) break;
+        if (n.state) continue;
+        if (G.auto && now >= n.t) { judge(n, 0); continue; }
+        if (now - n.t > WIN.miss) missNote(n);
+      }
+      // layers follow the bloom
+      LAYERS.forEach((L, i) => {
+        const on = G.bloom >= L.at;
+        if (on !== G.active[i]) {
+          G.active[i] = on;
+          layerGain[i].gain.setTargetAtTime(on ? (i === 3 ? 0.8 : 1) : 0, ac.currentTime, on ? 0.5 : 0.25);
+          if (on) toast('✿ ' + L.name + ' joined the song');
+        }
+      });
+      if (now > G.endT) endRun(false);
+    }
+  }
+  const pulse = Math.exp(-beatPh * 5);
+
+  // flowers (behind everything)
+  for (let i = flowers.length - 1; i >= 0; i--) {
+    const f = flowers[i];
+    const age = (pnow - f.born) / 1000;
+    let k = Math.max(0.01, Math.min(1, age * 3)), alpha = 0.9;
+    if (f.wilt) { const w = (pnow - f.wilt) / 1600; if (w >= 1) { flowers.splice(i, 1); continue; } alpha = 0.9 * (1 - w); k *= 1 - w * 0.5; }
+    const pf = 1 + (f.wilt ? 0 : 0.18 * pulse);
+    const x = CX + Math.cos(f.a) * f.r, y = CY + Math.sin(f.a) * f.r + (f.wilt ? ((pnow - f.wilt) / 1600) * 14 : 0);
+    const sz = f.size * k * pf;
+    cx.save(); cx.translate(x, y); cx.rotate(f.rot + age * 0.15);
+    cx.globalAlpha = alpha;
+    const col = f.wilt ? '#5a536b' : LANE_COL[f.lane];
+    if (!f.wilt) { cx.shadowColor = col; cx.shadowBlur = 14 * pf; }
+    cx.fillStyle = col;
+    for (let p = 0; p < f.petals; p++) {
+      cx.rotate(6.283 / f.petals);
+      cx.beginPath(); cx.ellipse(sz * 0.9, 0, sz * 0.85, sz * 0.36, 0, 0, 6.283); cx.fill();
+    }
+    cx.shadowBlur = 0; cx.fillStyle = f.wilt ? '#3d3849' : '#fff7e8';
+    cx.beginPath(); cx.arc(0, 0, sz * 0.32, 0, 6.283); cx.fill();
+    cx.restore();
+  }
+  cx.globalAlpha = 1;
+
+  // lanes + ring
+  cx.lineCap = 'round';
+  for (let l = 0; l < 4; l++) {
+    const a = LANE_ANG[l], fl = G ? G.laneFlash[l] : 0;
+    const col = LANE_COL[l];
+    // guide line
+    cx.strokeStyle = col; cx.globalAlpha = 0.1 + fl * 0.3; cx.lineWidth = 2 + fl * 6;
+    cx.beginPath(); cx.moveTo(CX + Math.cos(a) * R * 0.14, CY + Math.sin(a) * R * 0.14); cx.lineTo(CX + Math.cos(a) * R, CY + Math.sin(a) * R); cx.stroke();
+    // receptor arc on the ring
+    cx.globalAlpha = 0.45 + fl * 0.55 + pulse * 0.1; cx.lineWidth = 5 + fl * 5;
+    cx.shadowColor = col; cx.shadowBlur = 12 + fl * 24;
+    cx.beginPath(); cx.arc(CX, CY, R, a - 0.42, a + 0.42); cx.stroke();
+    cx.shadowBlur = 0;
+    if (G) G.laneFlash[l] *= 0.88;
+  }
+  cx.globalAlpha = 0.12; cx.strokeStyle = '#f3ecdf'; cx.lineWidth = 1;
+  cx.beginPath(); cx.arc(CX, CY, R, 0, 6.283); cx.stroke();
+  cx.globalAlpha = 1;
+
+  // bloom meter around the core + core seed
+  const coreR = R * 0.14 * (1 + 0.08 * pulse);
+  cx.strokeStyle = 'rgba(243,236,223,.12)'; cx.lineWidth = 3;
+  cx.beginPath(); cx.arc(CX, CY, R * 0.2, 0, 6.283); cx.stroke();
+  const grd = cx.createLinearGradient(CX - R * .2, CY, CX + R * .2, CY);
+  LANE_COL.forEach((c, i) => grd.addColorStop(i / 3, c));
+  cx.strokeStyle = grd; cx.lineWidth = 4;
+  cx.beginPath(); cx.arc(CX, CY, R * 0.2, -Math.PI / 2, -Math.PI / 2 + 6.283 * (bloom / 100)); cx.stroke();
+  LAYERS.forEach((L, i) => { // threshold ticks
+    const a = -Math.PI / 2 + 6.283 * L.at / 100, on = G ? G.active[i] : false;
+    cx.fillStyle = on ? '#fff7e8' : 'rgba(243,236,223,.25)';
+    cx.beginPath(); cx.arc(CX + Math.cos(a) * R * 0.2, CY + Math.sin(a) * R * 0.2, on ? 3.2 : 2, 0, 6.283); cx.fill();
+  });
+  const cg = cx.createRadialGradient(CX, CY, 0, CX, CY, coreR);
+  cg.addColorStop(0, '#fff7e8'); cg.addColorStop(0.5, `hsla(${300 + bloom},90%,75%,.8)`); cg.addColorStop(1, 'rgba(255,122,182,0)');
+  cx.fillStyle = cg; cx.beginPath(); cx.arc(CX, CY, coreR, 0, 6.283); cx.fill();
+
+  // notes (seeds) in flight
+  if (G) {
+    const ap = G.approach;
+    for (const n of G.notes) {
+      const dt = n.t - now;
+      if (dt > ap) break;
+      if (n.state && n.state !== 3) continue;
+      if (n.state === 3 && now - n.t > 0.4) continue;
+      const p = 1 - dt / ap; // 0 at center, 1 at ring
+      if (p < 0) continue;
+      const rr = R * 0.14 + (R - R * 0.14) * Math.pow(p, 1.25) + (p > 1 ? (p - 1) * R : 0);
+      const a = LANE_ANG[n.lane];
+      const x = CX + Math.cos(a) * rr, y = CY + Math.sin(a) * rr;
+      const col = n.state === 3 ? '#5a536b' : LANE_COL[n.lane];
+      const s = 4 + 8 * Math.min(1, p);
+      // tail
+      cx.strokeStyle = col; cx.globalAlpha = 0.35; cx.lineWidth = s * 0.7;
+      cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x - Math.cos(a) * s * 2.4, y - Math.sin(a) * s * 2.4); cx.stroke();
+      cx.globalAlpha = 1; cx.fillStyle = col; cx.shadowColor = col; cx.shadowBlur = n.state === 3 ? 0 : 16;
+      cx.beginPath(); cx.ellipse(x, y, s, s * 0.72, a, 0, 6.283); cx.fill();
+      if (n.harmony) { cx.strokeStyle = '#fff7e8'; cx.lineWidth = 1.5; cx.stroke(); }
+      cx.shadowBlur = 0;
+    }
+  }
+
+  // particles
+  cx.globalCompositeOperation = 'lighter';
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx / 60; p.y += p.vy / 60; p.vx *= 0.95; p.vy *= 0.95; p.life -= 0.025;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    cx.globalAlpha = p.life; cx.fillStyle = p.col;
+    cx.beginPath(); cx.arc(p.x, p.y, 2.2 * p.life + 0.5, 0, 6.283); cx.fill();
+  }
+  cx.globalCompositeOperation = 'source-over'; cx.globalAlpha = 1;
+
+  // judgements
+  cx.textAlign = 'center'; cx.font = "italic 300 20px Fraunces, serif";
+  for (let i = judgements.length - 1; i >= 0; i--) {
+    const j = judgements[i], age = (pnow - j.t) / 600;
+    if (age >= 1) { judgements.splice(i, 1); continue; }
+    const a = LANE_ANG[j.lane];
+    cx.globalAlpha = 1 - age; cx.fillStyle = j.col;
+    cx.fillText(j.text, CX + Math.cos(a) * (R * 0.62), CY + Math.sin(a) * (R * 0.62) + 7 - age * 10);
+  }
+  cx.globalAlpha = 1;
+
+  // HUD
+  if (G) {
+    cx.textAlign = 'left'; cx.fillStyle = '#f3ecdf';
+    cx.font = "600 26px Fraunces, serif"; cx.fillText(G.score.toLocaleString(), 22, 40);
+    cx.font = "11px 'Space Mono', monospace"; cx.fillStyle = '#9a93a8';
+    cx.fillText(`${G.def.title.toUpperCase()} · ${DIFFS[G.diff]}${G.auto ? ' · autoplay' : ''}`, 22, 60);
+    if (G.combo >= 5) { cx.fillStyle = '#ffd36e'; cx.font = "600 18px Fraunces, serif"; cx.fillText(G.combo + ' chain', 22, 86); }
+    cx.textAlign = 'right'; cx.font = "11px 'Space Mono', monospace";
+    LAYERS.forEach((L, i) => {
+      cx.fillStyle = G.active[i] ? LANE_COL[i % 4] : 'rgba(154,147,168,.45)';
+      cx.fillText((G.active[i] ? '✿ ' : '· ') + L.name, W - 22, 34 + i * 17);
+    });
+    // progress
+    const prog = Math.max(0, Math.min(1, now / G.endT));
+    cx.fillStyle = 'rgba(243,236,223,.08)'; cx.fillRect(0, H - 3, W, 3);
+    cx.fillStyle = 'rgba(243,236,223,.5)'; cx.fillRect(0, H - 3, W * prog, 3);
+  }
+}
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 1800); }
+
+// attract-mode garden on the menu
+for (let i = 0; i < 40; i++) { plant(i % 4, 1); flowers[flowers.length - 1].born -= 2000; }
+requestAnimationFrame(draw);
+
+// ?demo=1&song=0&diff=1 : autoplay straight away (for trailers / gameplay capture)
+if (params.has('demo')) {
+  songIdx = +(params.get('song') || 0); diff = +(params.get('diff') || 1);
+  if (params.get('seed')) seedText = params.get('seed');
+  $('auto').checked = true;
+  hide('menu');
+  setTimeout(() => startRun(), 300);
+}
+</script>
+</body>
+</html>
