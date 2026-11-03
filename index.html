@@ -90,7 +90,7 @@
       Seeds fly out from the centre. Hit them as they cross the ring:
       <kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd><kbd>←</kbd> or <kbd>W</kbd><kbd>D</kbd><kbd>S</kbd><kbd>A</kbd>, or tap the quadrant.<br>
       Every hit <i>is</i> a melody note and plants a flower. Flowers bloom new layers into the song —
-      roots, canopy, rustle, fireflies, aurora. Misses wilt them. <kbd>Esc</kbd> pauses. Your first garden comes with hints.
+      roots, canopy, rustle, fireflies, aurora. Misses wilt them. <kbd>P</kbd> pauses. Your first garden comes with hints.
     </p>
   </div>
 </div>
@@ -458,7 +458,7 @@ addEventListener('keydown', e => {
     if (e.key === 'Enter') { e.preventDefault(); startRun(); }
     return;
   }
-  if (e.code === 'Escape') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; } // Esc never reaches us on Playgama (rule 1.5.2), so P pauses too
   if (e.code === 'Enter' && G == null) { startRun(); return; }
   if (e.code === 'Enter' && G && G.ended && !$('results').classList.contains('hidden')) { e.preventDefault(); cancelAutoNext(); nextSong(); return; }
   if (e.repeat) return;
