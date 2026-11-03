@@ -3,6 +3,8 @@
 - Playable link (web, no download): https://arnavjhajharia.github.io/seedsong/
 - Source: https://github.com/arnavjhajharia/seedsong
 - Gameplay videos (1080p, ~50-60 fps, game audio), in ventures/chroma-game/seedsong-media/:
+  - NEWEST, RECOMMENDED: `seedsong-lantern-tide-v2-1080p.mp4` (builder s11): same wilt-and-recover run, plus the
+    perfect-hit ripples. It shows the core mechanic best.
   - `seedsong-kite-static-wild-1080p.mp4` (80.8 s): a clean autoplay run, so the whole arrangement blooms.
   - `seedsong-lantern-tide-wilt-and-recover-1080p.mp4`: scripted mistakes mid-song, so the garden wilts and the
     layers drop out, then come back. It shows the core mechanic best. RECOMMENDED for the submission.
