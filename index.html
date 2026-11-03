@@ -265,6 +265,7 @@ let G = null; // current run
 let offsetMs = store.get('offset', 0);
 const flowers = [], particles = [], judgements = [], ripples = [];
 let menuT0 = performance.now();
+let carryGarden = false, setN = 0;
 
 function currentDef() { return seedText ? SG.songFromText(seedText) : SG.SONGS[songIdx]; }
 function bestKey(def, d) { return 'best:' + def.id + ':' + d; }
@@ -281,7 +282,11 @@ async function startRun() {
   starting = false;
   const def = currentDef();
   const S = SG.build(def, diff);
-  flowers.length = 0; particles.length = 0; judgements.length = 0; ripples.length = 0;
+  // a chained 'Next song' keeps the garden: songs in one sitting grow one garden (a set), not separate rounds
+  if (carryGarden && flowers.length) { setN++; toast(`song ${setN} · your garden carries on ✿ ${flowers.filter(f => !f.wilt).length} flowers`); }
+  else { flowers.length = 0; setN = 1; }
+  carryGarden = false;
+  particles.length = 0; judgements.length = 0; ripples.length = 0;
   const lead = 0.6;
   G = {
     def, S, diff, auto: $('auto').checked || params.has('demo'),
@@ -393,7 +398,7 @@ function plant(lane, kind) {
   const rr = R * 1.18 + Math.pow(Math.random(), 0.8) * Math.min(maxR - R * 1.18, R * 1.4);
   flowers.push({ lane, a, r: rr, size: (kind === 1 ? 9 : 6.5) + Math.random() * 5, petals: 5 + Math.floor(Math.random() * 4),
     rot: Math.random() * 6.28, born: performance.now(), wilt: 0, phase: Math.floor(Math.random() * 4) });
-  if (flowers.length > 220) flowers.shift();
+  if (flowers.length > 320) flowers.shift();
 }
 function wilt(lane) {
   let k = 0;
@@ -514,7 +519,7 @@ const NEXT_WORDS = ['ember', 'harbour', 'moth', 'rain on tin', 'quiet hill', 'li
 function nextSong() {
   if (!seedText && songIdx < SG.SONGS.length - 1) { songIdx++; store.set('song', songIdx); }
   else { const n = store.get('nextWord', 0) || 0; seedText = NEXT_WORDS[n % NEXT_WORDS.length]; store.set('nextWord', n + 1); }
-  $('seed').value = seedText; renderMenu(); playAgain();
+  $('seed').value = seedText; renderMenu(); carryGarden = !!(G && G.ended && !G.auto); playAgain();
 }
 // after a song the player actually played, carry on by itself: visible 5-s countdown on the Next button.
 // Any other tap or key on the results screen cancels it (the button then reads 'Next song ▸' again). Off for demo links + autoplay.
@@ -568,11 +573,13 @@ function endRun(quit) {
   const acc = (G.perfect + G.good * 0.6) / total;
   const grade = acc >= 0.95 ? 'S' : acc >= 0.88 ? 'A' : acc >= 0.76 ? 'B' : acc >= 0.6 ? 'C' : 'seed';
   const full = G.miss === 0;
-  $('rtitle').textContent = `${G.def.title} · ${DIFFS[G.diff]}${G.auto ? ' · autoplay' : ''}`;
+  $('rtitle').textContent = `${G.def.title} · ${DIFFS[G.diff]}${G.auto ? ' · autoplay' : ''}${setN > 1 ? ` · song ${setN} of this garden` : ''}`;
+  const garden = flowers.filter(f => !f.wilt).length, bestG = store.get('bestGarden', 0);
+  if (!G.auto && garden > bestG) store.set('bestGarden', garden);
   $('rgrade').textContent = grade; $('rgrade').style.color = grade === 'S' ? LANE_COL[1] : grade === 'seed' ? '#9a93a8' : 'var(--ink)';
   $('rstats').innerHTML = [
     [G.score.toLocaleString(), 'score'], [(acc * 100).toFixed(1) + '%', 'accuracy'],
-    [G.maxCombo + (full ? ' ✿' : ''), full ? 'full bloom' : 'best chain'], [flowers.filter(f => !f.wilt).length, 'flowers'],
+    [G.maxCombo + (full ? ' ✿' : ''), full ? 'full bloom' : 'best chain'], [garden, garden > bestG && bestG > 0 && !G.auto ? 'garden · new best' : 'flowers in garden'],
   ].map(([v, l]) => `<div><b>${v}</b><small>${l}</small></div>`).join('');
   if (!G.auto) {
     const k = bestKey(G.def, G.diff), prev = store.get(k, null);
