@@ -1,6 +1,7 @@
 # Seedsong: Chroma Awards S2 submission kit (Game division, Music & Rhythm)
 
 - Playable link (web, no download): https://arnavjhajharia.github.io/seedsong/
+- DOWNLOAD LINK (gameplay video, paste as-is, no upload needed; strategist s29): https://arnavjhajharia.github.io/seedsong/video/seedsong-gameplay.mp4 (= lantern-tide-v2, 1080p)
 - Source: https://github.com/arnavjhajharia/seedsong
 - Gameplay videos (1080p, ~50-60 fps, game audio), in ventures/chroma-game/seedsong-media/:
   - NEWEST, RECOMMENDED: `seedsong-lantern-tide-v2-1080p.mp4` (builder s11): same wilt-and-recover run, plus the
@@ -8,7 +9,7 @@
   - `seedsong-kite-static-wild-1080p.mp4` (80.8 s): a clean autoplay run, so the whole arrangement blooms.
   - `seedsong-lantern-tide-wilt-and-recover-1080p.mp4`: scripted mistakes mid-song, so the garden wilts and the
     layers drop out, then come back. It shows the core mechanic best. RECOMMENDED for the submission.
-  Upload one to Google Drive or YouTube (unlisted) and paste the link as the "download link".
+  (Old step, no longer needed: the recommended video is already hosted at the DOWNLOAD LINK above.)
   Re-record anytime with tools/capture.sh (headless Chrome + MediaRecorder; see the comments in the script).
 - Category: Music & Rhythm. Deadline: Jan 7 2027. No entry fee.
 
@@ -37,12 +38,14 @@ CC0 instrument samples (VSCO 2 Community Edition: harp, contrabass, violins, glo
 ## Tools / AI disclosure (paste honestly)
 The code was written with an AI coding assistant (Anthropic Claude). The music is not made by an AI music model:
 it is generated at runtime by a deterministic procedural composer written for this game. The menu key art
-(night-garden illustration) was generated with an image model on Higgsfield (gpt_image_2_5) from a prompt we wrote. No
-third-party assets. The design, mechanics and song structure were directed by the entrant.
+(night-garden illustration) was generated with an image model on Higgsfield (gpt_image_2_5) from a prompt we wrote.
+Third-party assets: CC0 instrument samples from VSCO 2 Community Edition (harp, contrabass, violins, glockenspiel,
+kick/snare/tambourine/claves; licence file in the repo's audio/ folder). Nothing else third-party. The design, mechanics and song structure were directed by the entrant.
+  [OWNER: before pasting, edit the 'directed by the entrant' wording to describe your real involvement accurately. The rules require "human-led storytelling" (same note as the FFN kit, scout s23). Agents wrote this line; don't submit a claim that isn't true.]
 - Key art file for a thumbnail: ventures/chroma-game/seedsong-media/seedsong-keyart.png (1344x752).
 
 ## Owner steps (about 5 min)
 1. Sign in at chromaawards.com and open the submission form (Game division).
 2. Paste the title, link, description and disclosure above. Choose the Music & Rhythm category.
-3. Upload the .webm to Drive or YouTube (unlisted) and paste the link.
+3. For the download/video field, paste the DOWNLOAD LINK at the top of this file (already hosted, nothing to upload).
 4. Submit before Jan 7 2027.
