@@ -138,9 +138,10 @@ function midiHz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
 function initAudio() {
   if (ac) return;
   ac = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-  master = ac.createGain(); master.gain.value = 0.8;
+  master = ac.createGain(); master.gain.value = 0.62;
   const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
   master.connect(comp); comp.connect(ac.destination);
+  masterOut = comp;
   // generated impulse reverb
   reverb = ac.createConvolver();
   const len = ac.sampleRate * 2.8, ir = ac.createBuffer(2, len, ac.sampleRate);
@@ -158,7 +159,7 @@ function initAudio() {
   noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
   const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
 }
-let noiseBuf;
+let noiseBuf, masterOut, recorder = null;
 
 function env(g, t, a, peak, dec) {
   g.gain.setValueAtTime(0.0001, t);
@@ -269,6 +270,24 @@ async function startRun() {
   clearInterval(G.timer);
   G.timer = setInterval(schedulerTick, 25);
   schedulerTick();
+  if (params.get('record') && !recorder) startRecording(params.get('record'));
+}
+// ?demo=1&record=http://localhost:PORT/name.webm : capture canvas + game audio and PUT it to a local server (trailer capture)
+function startRecording(url) {
+  if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)) return;
+  const dest = ac.createMediaStreamDestination(); masterOut.connect(dest);
+  const stream = new MediaStream([...cv.captureStream(60).getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const mime = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8e6 });
+  const chunks = [];
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    try { const r = await fetch(url, { method: 'PUT', body: blob }); window.__recorded = r.status + ' ' + blob.size; }
+    catch (e) { window.__recorded = 'error ' + e; }
+  };
+  recorder.start(1000);
+  window.__recording = true;
 }
 function gameTime() { return ac.currentTime - G.start - (offsetMs / 1000) - (ac.outputLatency || 0); }
 
@@ -307,7 +326,7 @@ function judge(n, delta) {
 }
 function missNote(n) {
   n.state = 3; G.miss++; G.combo = 0;
-  G.bloom = Math.max(0, G.bloom - 3 * G.gainPerHit);
+  G.bloom = Math.max(0, G.bloom - 2.5 * G.gainPerHit);
   wilt(n.lane);
   judgements.push({ lane: n.lane, text: 'wilt', col: '#7d7590', t: performance.now() });
 }
@@ -431,6 +450,7 @@ function endRun(quit) {
     if (!prev || G.score > prev.score) store.set(k, { score: G.score, grade });
   }
   setTimeout(() => show('results'), 900);
+  if (recorder && recorder.state === 'recording') setTimeout(() => recorder.stop(), 3500);
 }
 
 // ---------- render ----------
@@ -461,7 +481,7 @@ function draw() {
       }
       // layers follow the bloom
       LAYERS.forEach((L, i) => {
-        const on = G.bloom >= L.at;
+        const on = G.active[i] ? G.bloom >= L.at - 8 : G.bloom >= L.at; // hysteresis: one slip doesn't kill a layer
         if (on !== G.active[i]) {
           G.active[i] = on;
           layerGain[i].gain.setTargetAtTime(on ? (i === 3 ? 0.8 : 1) : 0, ac.currentTime, on ? 0.5 : 0.25);
