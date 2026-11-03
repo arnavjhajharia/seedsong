@@ -56,6 +56,7 @@
   .stats div { border: 1px solid rgba(243,236,223,.12); border-radius: 12px; padding: 10px 4px; }
   .stats b { display: block; font-size: 20px; } .stats small { color: var(--dim); font-size: 10.5px; }
   .foot { position: fixed; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: rgba(154,147,168,.6); pointer-events: none; }
+  body.playing .foot { display: none; }
   #toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--dim); pointer-events: none; }
 </style>
 </head>
@@ -250,7 +251,7 @@ function scheduleStep(S, step, t) {
 let songIdx = store.get('song', 0), diff = store.get('diff', 1), seedText = '';
 let G = null; // current run
 let offsetMs = store.get('offset', 0);
-const flowers = [], particles = [], judgements = [];
+const flowers = [], particles = [], judgements = [], ripples = [];
 let menuT0 = performance.now();
 
 function currentDef() { return seedText ? SG.songFromText(seedText) : SG.SONGS[songIdx]; }
@@ -266,7 +267,7 @@ async function startRun() {
   starting = false;
   const def = currentDef();
   const S = SG.build(def, diff);
-  flowers.length = 0; particles.length = 0; judgements.length = 0;
+  flowers.length = 0; particles.length = 0; judgements.length = 0; ripples.length = 0;
   const lead = 0.6;
   G = {
     def, S, diff, auto: $('auto').checked || params.has('demo'),
@@ -286,7 +287,7 @@ async function startRun() {
   };
   layerGain.forEach(g => { g.gain.cancelScheduledValues(ac.currentTime); g.gain.setValueAtTime(0, ac.currentTime); });
   melodyBus._dly.delayTime.value = S.spb * 0.75;
-  hide('menu'); hide('results'); hide('pause');
+  hide('menu'); hide('results'); hide('pause'); document.body.classList.add('playing');
   clearInterval(G.timer);
   G.timer = setInterval(schedulerTick, 25);
   schedulerTick();
@@ -343,6 +344,7 @@ function judge(n, delta) {
   G.laneFlash[n.lane] = 1;
   judgements.push({ lane: n.lane, text: kind === 1 ? 'bloom' : 'sprout', col: LANE_COL[n.lane], t: performance.now() });
   burst(n.lane, kind === 1 ? 18 : 9);
+  if (kind === 1) ripples.push({ lane: n.lane, t: performance.now() });
 }
 function missNote(n) {
   n.state = 3; G.miss++; G.combo = 0;
@@ -458,6 +460,7 @@ function hide(id) { show(id, false); }
 
 // ---------- menu ----------
 function renderMenu() {
+  document.body.classList.remove('playing');
   const box = $('songs'); box.innerHTML = '';
   SG.SONGS.forEach((s, i) => {
     const b = document.createElement('button'); b.className = 'song' + (!seedText && i === songIdx ? ' sel' : '');
@@ -656,6 +659,17 @@ function draw() {
       cx.shadowBlur = 0;
     }
   }
+
+  // perfect-hit ripples: the receptor arc throws a widening echo outward
+  cx.lineCap = 'round';
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const rp = ripples[i], k = (pnow - rp.t) / 420;
+    if (k >= 1) { ripples.splice(i, 1); continue; }
+    const a = LANE_ANG[rp.lane], e = 1 - Math.pow(1 - k, 3);
+    cx.strokeStyle = LANE_COL[rp.lane]; cx.globalAlpha = 0.55 * (1 - k); cx.lineWidth = 3 * (1 - k) + 1;
+    cx.beginPath(); cx.arc(CX, CY, R * (1 + 0.22 * e), a - 0.42 - 0.2 * e, a + 0.42 + 0.2 * e); cx.stroke();
+  }
+  cx.globalAlpha = 1;
 
   // particles
   cx.globalCompositeOperation = 'lighter';
