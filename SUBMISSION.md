@@ -34,7 +34,10 @@ audio files and no downloads. Controls: arrow keys, WASD, or tap the quadrants o
 
 ## Tools / AI disclosure (paste honestly)
 The code was written with an AI coding assistant (Anthropic Claude). The music is not made by an AI music model:
-it is generated at runtime by a deterministic procedural composer written for this game. No third-party assets.
+it is generated at runtime by a deterministic procedural composer written for this game. The menu key art
+(night-garden illustration) was generated with an image model on Higgsfield (gpt_image_2_5) from a prompt we wrote. No
+third-party assets. The design, mechanics and song structure were directed by the entrant.
+- Key art file for a thumbnail: ventures/chroma-game/seedsong-media/seedsong-keyart.png (1344x752).
 
 ## Owner steps (about 5 min)
 1. Sign in at chromaawards.com and open the submission form (Game division).
