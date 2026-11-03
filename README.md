@@ -1,5 +1,7 @@
 # Seedsong
 
+**Play:** [Playgama](https://playgama.ai/play/h2lla7p4eujkc6) · [GitHub Pages](https://arnavjhajharia.github.io/seedsong/) · [devlog: the procedural composer](https://dev.to/bharat_ankh_920bf0864220a/i-made-a-rhythm-game-where-the-song-doesnt-exist-until-you-play-it-160-lines-of-procedural-2pph)
+
 A radial rhythm game where **the song doesn't exist until you play it**.
 
 - Seeds fly out from the centre along 4 lanes; hit them as they cross the ring (arrows / WASD / tap).
